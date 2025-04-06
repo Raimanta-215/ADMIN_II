@@ -1,0 +1,7 @@
+FROM ubuntu/bind9:9.18-22.04_beta
+
+COPY configFile/named.conf /etc/bind/named.conf
+
+COPY configFile/l2-5.zone /etc/bind/zone/l2-5.zone
+
+RUN chown -R bind:bind /etc/bind/zone && chmod -R 770 /etc/bind/zone
