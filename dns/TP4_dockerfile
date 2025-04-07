@@ -5,3 +5,12 @@ COPY configFile/named.conf /etc/bind/named.conf
 COPY configFile/l2-5.zone /etc/bind/zone/l2-5.zone
 
 RUN chown -R bind:bind /etc/bind/zone && chmod -R 770 /etc/bind/zone
+
+
+RUN mkdir -p /var/log/bind9 && \
+    touch /var/log/bind9/default.log && \
+    chown bind:bind /var/log/bind9/default.log
+
+
+EXPOSE 53/tcp
+EXPOSE 53/udp
