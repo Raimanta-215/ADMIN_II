@@ -1,16 +1,23 @@
+# utilisation d'une image bind basée sur ubuntu 
 FROM ubuntu/bind9:9.18-22.04_beta
 
-COPY configFile/named.conf /etc/bind/named.conf
+#mises à jour et intsallations des dépendances 
+RUN apt-get update && \
+    apt-get install -y nano bind9utils && \
+    rm -rf /var/lib/apt/lists/*
 
+# creation des fichiers de config DNS dans le containers 
+COPY configFile/named.conf /etc/bind/named.conf
 COPY configFile/l2-5.zone /etc/bind/zone/l2-5.zone
 
+#attribution des droits sur les ficheirs de zone
 RUN chown -R bind:bind /etc/bind/zone && chmod -R 770 /etc/bind/zone
 
-
+#config des fichiers de logs et attributions de droits
 RUN mkdir -p /var/log/bind9 && \
     touch /var/log/bind9/default.log && \
     chown bind:bind /var/log/bind9/default.log
 
-
+# exposition des ports pour Bind 
 EXPOSE 53/tcp
 EXPOSE 53/udp
