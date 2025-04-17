@@ -1,0 +1,104 @@
+**Rapport Technique - TP7 : Mise en place et sécurisation d'un serveur mail**
+
+---
+
+**Objectif du TP7 :**
+Mettre en place un serveur mail complet, fonctionnel et sécurisé, permettant l'envoi et la réception d'emails via un domaine personnel, et assurer la protection contre le spam et les abus.
+
+---
+
+### 1. Mise en place du serveur mail
+
+- Utilisation du container **docker-mailserver** avec un domaine personnalisé `l2-5.ephec-ti.be`
+- Configuration initiale avec certificat **TLS Let's Encrypt** pour le chiffrement des communications (port 465, 587 pour SMTP et 993 pour IMAP).
+- Déploiement du container via `docker-compose` dans un projet `tp7/`.
+- Vérification des ports ouverts avec `docker ps` : ports SMTP (25, 465, 587), IMAP (143, 993).
+
+---
+
+### 2. Création des comptes et test de fonctionnement
+
+- Création d'utilisateurs via :
+  ```bash
+  docker exec -ti mailserver setup email add utilisateur@l2-5.ephec-ti.be
+  ```
+- Ajout de l'alias obligatoire pour `postmaster@...` via :
+  ```bash
+  docker exec -ti mailserver setup alias add postmaster@l2-5.ephec-ti.be utilisateur@l2-5.ephec-ti.be
+  ```
+- Connexion et tests fonctionnels réalisés avec **Thunderbird** (ou autre client).
+- Envoi/réception de mails testés :
+  - Entre deux comptes du domaine
+  - Depuis l’extérieur (Gmail)
+  - Vers l’extérieur
+
+---
+
+### 3. Sécurisation du serveur mail
+
+#### 3.1 TLS et chiffrement
+
+- Vérification des ports dédiés TLS implicite/explicite via `docker ps`
+- Tests via Wireshark (optionnel)
+- Mise en place d'un certificat valide via Certbot et Let's Encrypt
+
+#### 3.2 Authentification du domaine
+
+**Objectif : prouver que notre domaine n'est pas un relai à spam**
+
+**a) Alignement MX / A / PTR**
+- Vérification via MXToolbox que :
+  - Le MX pointe sur `mail.l2-5.ephec-ti.be`
+  - Le A record et le PTR sont bien alignés
+
+**b) SPF (Sender Policy Framework)**
+- Ajout du record suivant dans la zone DNS (fichier `l2-5.zone`)
+  ```
+  l2-5.ephec-ti.be. IN TXT "v=spf1 mx -all"
+  ```
+- Vérification de la propagation avec `dig` et MXToolbox
+
+**c) DKIM (DomainKeys Identified Mail)**
+- Génération des clés avec :
+  ```bash
+  docker exec -ti mailserver setup config dkim
+  ```
+- Ajout du contenu du fichier `mail.txt` dans le fichier de zone DNS
+- Vérification avec `dig mail._domainkey.l2-5.ephec-ti.be TXT`
+- Confirmation via [DKIM Validator](https://dkimvalidator.com/) que la signature est bien présente dans les entêtes
+
+**d) DMARC**
+- Ajout dans le fichier de zone :
+  ```
+  _dmarc.l2-5.ephec-ti.be. IN TXT "v=DMARC1; p=quarantine; rua=mailto:postmaster@l2-5.ephec-ti.be"
+  ```
+- Vérification de la présence via `dig` et MXToolbox
+
+---
+
+### 4. Mise en place de SpamAssassin
+
+- Activation dans `mailserver.env` :
+  ```
+  ENABLE_SPAMASSASSIN=1
+  ```
+- Redémarrage du container mail
+- Envoi de mails de test "suspects" (avec contenu de spam connu)
+- Observation des entêtes :
+  - `X-Spam-Level`
+  - `X-Spam-Status: Yes`
+- Le mail est automatiquement classé comme indésirable
+
+---
+
+### 5. Conclusion
+
+Le serveur mail est opérationnel et conforme aux bonnes pratiques de sécurité :
+- Chiffrement TLS pour les connexions
+- Authentification du domaine via SPF, DKIM, DMARC
+- Filtrage anti-spam fonctionnel via SpamAssassin
+
+Tous les outils de test (MXToolbox, dig, DKIMValidator) ont confirmé la bonne configuration du serveur.
+
+
+
